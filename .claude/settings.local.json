@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where python)",
+      "Bash(where npm)",
+      "Bash(where docker)",
+      "Bash(if not exist venv python -m venv venv)",
+      "Bash(python:*)",
+      "Bash(call venvScriptsactivate.bat)",
+      "Bash(pip install:*)",
+      "Bash(npm install)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
