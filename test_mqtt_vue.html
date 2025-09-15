@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT 订阅测试</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .messages {
+            margin-top: 30px;
+        }
+        
+        .message-item {
+            background: #f8f9fa;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-in;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .message-topic {
+            font-weight: bold;
+            color: #2196F3;
+            margin-bottom: 8px;
+        }
+        
+        .message-content {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .no-messages {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px;
+        }
+        
+        .clear-messages {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        
+        .message-count {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h1>🔌 MQTT 订阅测试工具</h1>
+                <p>连接到 broker.emqx.io:1883</p>
+            </div>
+            
+            <div class="content">
+                <!-- 连接状态 -->
+                <div :class="['status', connectionStatus]">
+                    {{ statusText }}
+                </div>
+                
+                <!-- 主题输入 -->
+                <div class="form-group">
+                    <label for="topic">订阅主题：</label>
+                    <input 
+                        type="text" 
+                        id="topic"
+                        v-model="topic" 
+                        placeholder="请输入要订阅的主题，例如：test_0912"
+                        :disabled="isSubscribed"
+                    >
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="btn-group">
+                    <button 
+                        class="btn-primary" 
+                        @click="connectMqtt"
+                        :disabled="isConnected || isConnecting"
+                    >
+                        {{ isConnecting ? '连接中...' : '连接服务器' }}
+                    </button>
+                    
+                    <button 
+                        class="btn-success" 
+                        @click="subscribeTopic"
+                        :disabled="!isConnected || !topic || isSubscribed"
+                    >
+                        订阅主题
+                    </button>
+                    
+                    <button 
+                        class="btn-danger" 
+                        @click="disconnect"
+                        :disabled="!isConnected && !isConnecting"
+                    >
+                        断开连接
+                    </button>
+                </div>
+                
+                <!-- 消息列表 -->
+                <div class="messages">
+                    <div class="message-count" v-if="messages.length > 0">
+                        共收到 {{ messages.length }} 条消息
+                        <button 
+                            class="btn-danger" 
+                            @click="clearMessages" 
+                            style="margin-left: 20px; padding: 5px 10px; font-size: 12px;"
+                        >
+                            清空消息
+                        </button>
+                    </div>
+                    
+                    <div v-if="messages.length === 0" class="no-messages">
+                        暂无消息，请先连接并订阅主题
+                    </div>
+                    
+                    <div 
+                        v-for="(message, index) in messages" 
+                        :key="index" 
+                        class="message-item"
+                    >
+                        <div class="message-time">{{ message.time }}</div>
+                        <div class="message-topic">主题: {{ message.topic }}</div>
+                        <div class="message-content">{{ message.content }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    client: null,
+                    isConnected: false,
+                    isConnecting: false,
+                    isSubscribed: false,
+                    topic: 'test_0912',
+                    messages: [],
+                    brokerUrl: 'wss://broker.emqx.io:8084/mqtt',
+                    clientId: 'vue_client_' + Math.random().toString(16).substr(2, 8)
+                };
+            },
+            computed: {
+                connectionStatus() {
+                    if (this.isConnecting) return 'connecting';
+                    return this.isConnected ? 'connected' : 'disconnected';
+                },
+                statusText() {
+                    if (this.isConnecting) return '正在连接服务器...';
+                    if (this.isConnected) {
+                        return this.isSubscribed ? 
+                            `✅ 已连接并订阅主题: ${this.topic}` : 
+                            '✅ 已连接服务器，请输入主题进行订阅';
+                    }
+                    return '❌ 未连接服务器';
+                }
+            },
+            methods: {
+                connectMqtt() {
+                    if (this.isConnected || this.isConnecting) return;
+                    
+                    this.isConnecting = true;
+                    console.log('连接到:', this.brokerUrl);
+                    
+                    this.client = mqtt.connect(this.brokerUrl, {
+                        clientId: this.clientId,
+                        clean: true,
+                        connectTimeout: 4000,
+                        reconnectPeriod: 1000,
+                    });
+
+                    this.client.on('connect', () => {
+                        console.log('MQTT 连接成功');
+                        this.isConnected = true;
+                        this.isConnecting = false;
+                    });
+
+                    this.client.on('error', (error) => {
+                        console.error('MQTT 连接错误:', error);
+                        this.isConnecting = false;
+                        alert('连接失败: ' + error.message);
+                    });
+
+                    this.client.on('message', (topic, payload) => {
+                        const message = {
+                            time: new Date().toLocaleString(),
+                            topic: topic,
+                            content: payload.toString()
+                        };
+                        this.messages.unshift(message);
+                        console.log('收到消息:', message);
+                    });
+
+                    this.client.on('disconnect', () => {
+                        console.log('MQTT 连接断开');
+                        this.isConnected = false;
+                        this.isSubscribed = false;
+                        this.isConnecting = false;
+                    });
+                },
+
+                subscribeTopic() {
+                    if (!this.isConnected || !this.topic || this.isSubscribed) return;
+                    
+                    this.client.subscribe(this.topic, (error) => {
+                        if (error) {
+                            console.error('订阅失败:', error);
+                            alert('订阅失败: ' + error.message);
+                        } else {
+                            console.log('订阅成功:', this.topic);
+                            this.isSubscribed = true;
+                        }
+                    });
+                },
+
+                disconnect() {
+                    if (this.client) {
+                        this.client.end();
+                        this.client = null;
+                    }
+                    this.isConnected = false;
+                    this.isSubscribed = false;
+                    this.isConnecting = false;
+                },
+
+                clearMessages() {
+                    this.messages = [];
+                }
+            },
+
+            beforeUnmount() {
+                this.disconnect();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

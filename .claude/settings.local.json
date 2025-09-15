@@ -8,7 +8,14 @@
       "Bash(python:*)",
       "Bash(call venvScriptsactivate.bat)",
       "Bash(pip install:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(mkdir:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(tree:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(for dir in services models core config utils)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
