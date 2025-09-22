@@ -15,7 +15,11 @@
       "Bash(npm install:*)",
       "Bash(npm run dev:*)",
       "Bash(for dir in services models core config utils)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(dir backend)",
+      "Read(//d/back/chromatography_system/**)",
+      "Bash(dir:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
